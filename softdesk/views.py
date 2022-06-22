@@ -42,6 +42,8 @@ class ProjectViewset(MultipleSerializerMixin, ReadOnlyModelViewSet):
 
     def put(self, request, pk):
         project = Project.objects.filter(id=pk)
+        item = Project.objects.filter(id=pk)
+        item.delete()
         serializer = ProjectDetailSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -92,10 +94,15 @@ class IssueViewset(MultipleSerializerMixin, ReadOnlyModelViewSet):
 
     def put(self, request, pk, project_id):
         item = Issue.objects.filter(id=pk)
+        item.delete()
         test = request.data
         test = test.copy()
+        print(pk, project_id)
         test['project_associated'] = project_id
+        test['id'] = pk
+        print(test)
         serializer = IssueDetailSerializer(data=test)
+        print(serializer)
         if serializer.is_valid():
             serializer.save()
             return Response({"status": "success", "data": serializer.data},
@@ -127,10 +134,10 @@ class CommentViewset(ReadOnlyModelViewSet):
     def get_queryset(self):
         return Comment.objects.all()
 
-    def post(self, request, project_id, issue_id):
+    def post(self, request, issue_id, project_id):
         test = request.data
         test = test.copy()
-        print(issue_id)
+        print(project_id, issue_id)
         test['issue_associated'] = issue_id
         serializer = CommentDetailSerializer(data=test)
         if serializer.is_valid():
@@ -141,12 +148,13 @@ class CommentViewset(ReadOnlyModelViewSet):
             return Response({"status": "error", "data": serializer.errors},
                             status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, pk, project_id, issue_id):
-        item = Comment.objects.filter(id=pk)
+    def put(self, request, issue_id, project_id):
+        item = Comment.objects.filter(id=issue_id)
         test = request.data
         test = test.copy()
         test['issue_associated'] = issue_id
         serializer = CommentDetailSerializer(data=test)
+
         if serializer.is_valid():
             serializer.save()
             return Response({"status": "success", "data": serializer.data},
@@ -161,3 +169,46 @@ class CommentViewset(ReadOnlyModelViewSet):
         item.delete()
         return Response({"status": "success", "data":"item successfully erased"},
                         status=status.HTTP_200_OK)
+
+
+
+class UserViewset(ReadOnlyModelViewSet):
+
+    def get_queryset(self):
+        return User.objects.all()
+
+    def post(self, request, project_id, issue_id):
+        test = request.data
+        test = test.copy()
+        print(issue_id)
+        test['issue_associated'] = issue_id
+        serializer = CommentDetailSerializer(data=test)
+        print(serializer)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": "success", "data": serializer.data},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "error", "data": serializer.errors},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    # def put(self, request, pk, project_id, issue_id):
+    #     item = Comment.objects.filter(id=pk)
+    #     test = request.data
+    #     test = test.copy()
+    #     test['issue_associated'] = issue_id
+    #     serializer = CommentDetailSerializer(data=test)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response({"status": "success", "data": serializer.data},
+    #                         status=status.HTTP_200_OK)
+    #     else:
+    #         return Response({"status": "error", "data": serializer.errors},
+    #                         status=status.HTTP_400_BAD_REQUEST)
+    #
+    #
+    # def delete(self, request, pk, project_id, issue_id):
+    #     item = Comment.objects.filter(id=pk)
+    #     item.delete()
+    #     return Response({"status": "success", "data":"item successfully erased"},
+    #                     status=status.HTTP_200_OK)

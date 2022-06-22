@@ -13,11 +13,11 @@ class ProjectListSerializer(ModelSerializer):
 class ProjectDetailSerializer(ModelSerializer):
 
     issues = SerializerMethodField()
-    users_test = SerializerMethodField()
+    users_on_project = SerializerMethodField()
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'issues', 'users_test']
+        fields = ['id', 'name', 'issues', 'users_on_project']
 
     def get_issues(self, instance):
         queryset = instance.issues.filter(project_associated_id=instance.id)
@@ -25,8 +25,8 @@ class ProjectDetailSerializer(ModelSerializer):
         serializer = IssueListSerializer(queryset, many=True)
         return serializer.data
     #
-    def get_users_test(self, instance):
-        queryset = instance.users_test.all()
+    def get_users_on_project(self, instance):
+        queryset = instance.users_on_project.all()
         serializer = UserListSerializer(queryset, many=True)
         return serializer.data
 
@@ -51,7 +51,7 @@ class IssueDetailSerializer(ModelSerializer):
         fields = ['id', 'name', 'comments', 'project_associated']
 
     def get_comments(self, instance):
-        queryset= instance.comments.all()
+        queryset = instance.comments.all()
         serializer = CommentListSerializer(queryset, many=True)
         return serializer.data
 
