@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
-from softdesk.models import Project, Issue, Comment, User, Contributors
+from softdesk.models import Project, Issue, Comment, User
 
 
 class ProjectListSerializer(ModelSerializer):
@@ -13,20 +13,20 @@ class ProjectListSerializer(ModelSerializer):
 class ProjectDetailSerializer(ModelSerializer):
 
     issues = SerializerMethodField()
-    user_contributing = SerializerMethodField()
+    users_test = SerializerMethodField()
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'issues', 'user_contributing']
+        fields = ['id', 'name', 'issues', 'users_test']
 
     def get_issues(self, instance):
         queryset = instance.issues.filter(project_associated_id=instance.id)
         print(instance.id)
         serializer = IssueListSerializer(queryset, many=True)
         return serializer.data
-
-    def get_user_contributing(self, instance):
-        queryset = instance.user_contributing.all()
+    #
+    def get_users_test(self, instance):
+        queryset = instance.users_test.all()
         serializer = UserListSerializer(queryset, many=True)
         return serializer.data
 
