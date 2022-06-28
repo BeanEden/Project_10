@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from softdesk.models import Project, Issue, Comment, Contributor, User
+from softdesk.models import Project, Issue, Comment, Contributor
 from softdesk.serializers import ProjectListSerializer, ProjectDetailSerializer,\
     IssueListSerializer, IssueDetailSerializer,\
     CommentListSerializer, CommentDetailSerializer, \
@@ -19,6 +19,10 @@ from rest_framework import generics
 from django.contrib.auth import get_user_model
 # from django.contrib.auth.models import User
 # from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+
 
 class MultipleSerializerMixin:
 
@@ -33,6 +37,7 @@ class MultipleSerializerMixin:
 class MyObtainTokenPairView(TokenObtainPairView):
     permission_classes = (AllowAny,)
     serializer_class = MyTokenObtainPairSerializer
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -67,11 +72,10 @@ class IssueViewset(MultipleSerializerMixin, ModelViewSet):
         return queryset
 
 
-class CommentViewset(ReadOnlyModelViewSet):
+class CommentViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = CommentListSerializer
     detail_serializer_class = CommentDetailSerializer
-    queryset = Comment.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -83,11 +87,12 @@ class CommentViewset(ReadOnlyModelViewSet):
         return queryset
 
 
-class UserViewset(MultipleSerializerMixin, ModelViewSet):
-    serializer_class = UserListSerializer
-    detail_serializer_class = UserDetailSerializer
-    queryset = User.objects.all()
-    permission_classes = [IsAuthenticated]
+# class UserViewset(MultipleSerializerMixin, ModelViewSet):
+#     serializer_class = UserListSerializer
+#     detail_serializer_class = UserDetailSerializer
+#     queryset = User.objects.all()
+#     permission_classes = [IsAuthenticated]
+
 
 
 class ContributorViewset(MultipleSerializerMixin, ModelViewSet):
@@ -95,3 +100,11 @@ class ContributorViewset(MultipleSerializerMixin, ModelViewSet):
     detail_serializer_class = ContributorDetailSerializer
     queryset = Contributor.objects.all()
     permission_classes = IsAuthenticated
+
+    def get_queryset(self):
+        path = self.request.path_info
+        split_path = path.split('/')
+        issue_id = split_path[4]
+        issue = Issue.objects.get(id=issue_id)
+        queryset = Comment.objects.filter(issue_associated = issue)
+        return queryset

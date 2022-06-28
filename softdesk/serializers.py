@@ -1,12 +1,15 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
-from softdesk.models import Project, Issue, Comment, User, Contributor
+from softdesk.models import Project, Issue, Comment, Contributor
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 class ProjectListSerializer(ModelSerializer):
@@ -24,60 +27,18 @@ class ProjectListSerializer(ModelSerializer):
             name = validated_data['name'],
             author = user,
         )
+
         # contributor = Contributor.objects.create(
         #     role = 'author',
         # )
         # contributor.users_on_project.set(user)
         # project.save()
+        # contributor = Contributor.objects.create(
+        #     role = 'author'
+        # )
+        # contributor.users_on_project.add(user)
+        # contributor.project_contributed.add(project)
         return project
-
-
-class ProjectDetailSerializer(ModelSerializer):
-
-    issues = SerializerMethodField()
-    # contributors = SerializerMethodField()
-    # issues = IssueListSerializer(many=True)
-
-    class Meta:
-        model = Project
-        fields = ['id', 'name', 'author', 'issues']
-
-    def get_issues(self, instance):
-        queryset = instance.issues.filter(project_associated_id=instance.id)
-        print(instance.id)
-        serializer = IssueListSerializer(queryset, many=True)
-        return serializer.data
-
-    # def get_contributors(self, instance):
-    #     queryset = instance.contributors.all()
-    #     queryset = Contributor.objects.filter(project_contributed= instance.id)
-    #     serializer = ContributorListSerializer(queryset, many=True)
-    #     return serializer.data
-
-    # def create(self, validated_data):
-    #     print(validated_data)
-    #     user = None
-    #     request = self.context.get("request")
-    #     if request and hasattr(request, "user"):
-    #         user = request.user
-    #     project=Project.objects.create(
-    #         name = validated_data['name'],
-    #         author = user,
-    #     )
-    #     contributor = Contributor.objects.create(
-    #         role = 'author',
-    #         project_contributed = project.id,
-    #         users_on_project = user,
-    #     )
-    #     project.save()
-    #     return project
-
-    # def create(self, validated_data):
-    #     project, created = Project.objects.update_or_create(
-    #         question=validated_data.get('question', None),
-    #         defaults={'name': validated_data.get('name', None),
-    #                   'author':'ter'})
-    #     return project
 
 
 class IssueListSerializer(ModelSerializer):
@@ -91,48 +52,59 @@ class IssueListSerializer(ModelSerializer):
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             user = request.user
-        print(request.data)
-        pk = request.path_info
-        pk = pk.replace('/projects/', "")
-        pk = pk.replace('/issues/', "")
-        project=Project.objects.get(id=pk)
+        path = request.path_info
+        split_path = path.split('/')
+        project_id = split_path[2]
+        project = Project.objects.get(id=project_id)
         issue = Issue.objects.create(
             name=validated_data['name'],
             author=user,
             project_associated= project
         )
-        # issue.project_associated.set(Project.objects.filter(id=int(pk)))
-        # contributor = Contributor.objects.create(
-        #     role = 'author',
-        # )
-        # contributor.users_on_project.set(user)
-        # project.save()
         return issue
 
-
-class IssueDetailSerializer(ModelSerializer):
-
-    comments = SerializerMethodField()
-
-    class Meta:
-        model = Issue
-        fields = ['id', 'name', 'comments', 'project_associated']
-
-    def get_comments(self, instance):
-        queryset = instance.comments.all()
-        serializer = CommentListSerializer(queryset, many=True)
-        return serializer.data
-
-    def create(self, validated_data):
-        return Issue.objects.create(**validated_data)
 
 
 class CommentListSerializer(ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'author']
 
+    def create(self, validated_data):
+        user = None
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            user = request.user
+        path = request.path_info
+        split_path = path.split('/')
+        issue_id = split_path[4]
+        issue = Issue.objects.get(id=issue_id)
+        comment = Comment.objects.create(
+            name=validated_data['name'],
+            author=user,
+            issue_associated = issue
+        )
+        return comment
+
+
+
+
+class ProjectDetailSerializer(ModelSerializer):
+
+    issues = IssueListSerializer(many=True)
+
+    class Meta:
+        model = Project
+        fields = ['id', 'name', 'author', 'issues']
+
+
+class IssueDetailSerializer(ModelSerializer):
+    comments = CommentListSerializer(many=True)
+
+    class Meta:
+        model = Issue
+        fields = ['id', 'name', 'comments', 'project_associated']
 
 
 class CommentDetailSerializer(ModelSerializer):
@@ -140,7 +112,6 @@ class CommentDetailSerializer(ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'name', 'issue_associated']
-
 
 
 class UserListSerializer(ModelSerializer):
@@ -167,17 +138,13 @@ class UserDetailSerializer(ModelSerializer):
 
 class ContributorListSerializer(ModelSerializer):
 
-
     project_contributed = SerializerMethodField()
     users_on_project = SerializerMethodField()
 
     class Meta:
         model = Contributor
         fields = ['id', 'role', 'project_contributed', 'users_on_project']
-    #
-    # def get_project_contributed(self, instance):
-    #     queryset = instance.project_contributed.all()
-    #     serializer= C
+
 
 class ContributorDetailSerializer(ModelSerializer):
 
@@ -198,6 +165,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
     def get_token(cls, user):
+        print(user)
         token = super(MyTokenObtainPairSerializer, cls).get_token(user)
         # Add custom claims
         token['username'] = user.username
@@ -240,3 +208,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+        # issue.project_associated.set(Project.objects.filter(id=int(pk)))
+        # contributor = Contributor.objects.create(
+        #     role = 'author',
+        # )
+        # contributor.users_on_project.set(user)
+        # project.save()
