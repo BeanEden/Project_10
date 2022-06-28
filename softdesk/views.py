@@ -49,7 +49,6 @@ class ProjectViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = ProjectListSerializer
     detail_serializer_class = ProjectDetailSerializer
-    # queryset = Project.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -99,12 +98,12 @@ class ContributorViewset(MultipleSerializerMixin, ModelViewSet):
     serializer_class = ContributorListSerializer
     detail_serializer_class = ContributorDetailSerializer
     queryset = Contributor.objects.all()
-    permission_classes = IsAuthenticated
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         path = self.request.path_info
         split_path = path.split('/')
-        issue_id = split_path[4]
-        issue = Issue.objects.get(id=issue_id)
-        queryset = Comment.objects.filter(issue_associated = issue)
+        project_id = split_path[2]
+        project = Project.objects.get(id=project_id)
+        queryset = Contributor.objects.filter(project_contributed = project)
         return queryset

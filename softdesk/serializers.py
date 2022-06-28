@@ -118,7 +118,7 @@ class UserListSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'name']
+        fields = ['id', 'username']
 
 
 class UserDetailSerializer(ModelSerializer):
@@ -127,7 +127,7 @@ class UserDetailSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'project_contributed']
+        fields = ['id', 'username', 'project_contributed']
     #
     def get_project_contributed(self, instance):
         queryset = instance.project_contributed.all()
@@ -145,6 +145,40 @@ class ContributorListSerializer(ModelSerializer):
         model = Contributor
         fields = ['id', 'role', 'project_contributed', 'users_on_project']
 
+    def create(self, validated_data):
+        user = None
+        request = self.context.get("request")
+        path = request.path_info
+        split_path = path.split('/')
+        project_id = split_path[2]
+        project = Project.objects.get(id=project_id)
+        print(validated_data)
+        # user = User.objects.get(username=validated_data['username'])
+        contributor = Contributor.objects.create(
+            role = validated_data['role'],
+            # users_on_project = user,
+            # project_contributed = project
+        )
+        # contributor.users_on_project.set(user)
+        # project.save()
+        # contributor = Contributor.objects.create(
+        #     role = 'author'
+        # )
+        # contributor.users_on_project.add(user)
+        contributor.project_contributed.add(project)
+        return contributor
+
+    def get_project_contributed(self, instance):
+        queryset = instance.project_contributed.all()
+        serializer = ProjectListSerializer(queryset, many=True)
+        print(serializer)
+        return serializer.data
+
+    def get_users_on_project(self, instance):
+        queryset = instance.users_on_project.all()
+        serializer = UserListSerializer(queryset, many=True)
+        print(serializer)
+        return serializer.data
 
 class ContributorDetailSerializer(ModelSerializer):
 
