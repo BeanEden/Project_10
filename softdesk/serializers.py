@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
-from softdesk.models import Project, Issue, Comment, Contributor
+from softdesk.models import Project, Issue, Comment, Contributor, set_username
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
@@ -13,11 +13,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-def clean_string(string, *args):
-    string = string.casefold()
-    for i in args:
-        string = string.replace(i, "")
-    return string
+
 
 
 
@@ -156,15 +152,7 @@ class ContributorListSerializer(ModelSerializer):
         # user = User.objects.get(username=validated_data['username'])
         contributor = Contributor.objects.create(
             role = validated_data['role'],
-            # users_on_project = user,
-            # project_contributed = project
         )
-        # contributor.users_on_project.set(user)
-        # project.save()
-        # contributor = Contributor.objects.create(
-        #     role = 'author'
-        # )
-        # contributor.users_on_project.add(user)
         contributor.project_contributed.add(project)
         return contributor
 
@@ -202,33 +190,20 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         print(user)
         token = super(MyTokenObtainPairSerializer, cls).get_token(user)
         # Add custom claims
-        token['username'] = user.username
+        token['email'] = user.email
         return token
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-
-    # username = SerializerMethodField()
-    email = serializers.EmailField(
-            required=True,
-            validators=[UniqueValidator(queryset=User.objects.all())]
-        )
-    # first_name = serializers.CharField(validators=[validate_slug])
-    # last_name = serializers.CharField(validators=[validate_slug])
-
-    password = serializers.CharField(write_only=True, required=True,
-                                     validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
-
-
 
     class Meta:
         model = User
         fields = ('username', 'password', 'password2', 'email', 'first_name',
                   'last_name')
         extra_kwargs = {
-            'first_name': {'required': True},
-            'last_name': {'required': True}
+            'password': {'write_only': True},
+            'username': {'read_only': True}
         }
 
     def validate(self, attrs):
@@ -238,42 +213,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        username = self.username_creation(validated_data)
-        # count = 0
-        # if User.objects.get(username=username) :
-        #     count+=1
-        #     username = username + str(count)
-
-        print(username)
         user = User.objects.create(
-            username = username,
             email=validated_data['email'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
         )
         user.set_password(validated_data['password'])
-        user.save()
-
+        set_username(user)
         return user
-
-
-    def username_creation(self, validated_data):
-        clean_first_name = clean_string(validated_data['first_name']," ","-")
-        clean_last_name = clean_string(validated_data['last_name']," ","-")
-
-        if len(clean_first_name) < 4:
-            first_key = clean_first_name
-
-        else :
-            first_key = clean_first_name[:3]
-
-
-        if len(clean_last_name) < 2:
-            second_key = clean_last_name
-
-        else:
-            second_key = clean_last_name[:2]
-
-        username = first_key+second_key
-
-        return username

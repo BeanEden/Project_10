@@ -3,6 +3,8 @@ from django.conf import settings
 from django.db import models, transaction
 from requests import request
 from django.core.validators import ValidationError, validate_slug, slug_re
+from django.contrib.auth.password_validation import validate_password
+from rest_framework.validators import UniqueValidator
 
 # PROJECT_TYPE = ['back-end', 'front-end', 'iOS', 'Android']
 
@@ -29,11 +31,40 @@ ISSUE_STATUS = [
     ('done', 'Terminé')
 ]
 
+def clean_string(string, *args):
+    string = string.casefold()
+    for i in args:
+        string = string.replace(i, "")
+    return string
+
+
+
+
 
 class User(AbstractUser):
     contributions = models.ForeignKey(
         to='softdesk.Contributor', on_delete=models.CASCADE,
         related_name='users_on_project', null=True)
+    username = models.CharField(max_length=255, validators = [validate_slug], unique=True)
+    first_name = models.CharField(max_length=255, validators = [validate_slug])
+    last_name = models.CharField(max_length=255, validators = [validate_slug])
+    email = models.EmailField(blank=False,unique=True)
+    password = models.CharField(max_length=255, blank=False,
+                                     validators=[validate_password])
+
+def set_username(instance, **kwargs):
+    if not instance.username:
+        clean_first_name = clean_string(instance.first_name, " ", "-")
+        clean_last_name = clean_string(instance.last_name, " ", "-")
+        username = clean_first_name + "-" + clean_last_name
+        # username = instance.first_name
+        counter = 1
+        while User.objects.filter(username=username):
+            username = instance.first_name + str(counter)
+            counter += 1
+        instance.username = username
+
+models.signals.pre_save.connect(set_username, sender=User)
 
 
 class Contributor(models.Model):
