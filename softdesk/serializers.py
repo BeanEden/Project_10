@@ -7,16 +7,25 @@ from rest_framework import serializers
 # from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
+from django.core.validators import validate_slug
 
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+
+def clean_string(string, *args):
+    string = string.casefold()
+    for i in args:
+        string = string.replace(i, "")
+    return string
+
 
 
 class ProjectListSerializer(ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'author']
+        fields = ['id', 'title','type', 'author', 'description']
 
     def create(self, validated_data):
         user = None
@@ -24,20 +33,11 @@ class ProjectListSerializer(ModelSerializer):
         if request and hasattr(request, "user"):
             user = request.user
         project = Project.objects.create(
-            name = validated_data['name'],
-            author = user,
+            title= request.data['title'],
+            type=request.data['type'],
+            author=user,
+            description=request.data['description'],
         )
-
-        # contributor = Contributor.objects.create(
-        #     role = 'author',
-        # )
-        # contributor.users_on_project.set(user)
-        # project.save()
-        # contributor = Contributor.objects.create(
-        #     role = 'author'
-        # )
-        # contributor.users_on_project.add(user)
-        # contributor.project_contributed.add(project)
         return project
 
 
@@ -45,7 +45,7 @@ class IssueListSerializer(ModelSerializer):
 
     class Meta:
         model = Issue
-        fields = ['id', 'name', 'author']
+        fields = ['id', 'title', 'tag', 'priority', 'author', 'description']
 
     def create(self, validated_data):
         user = None
@@ -208,13 +208,19 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
 
+    # username = SerializerMethodField()
     email = serializers.EmailField(
             required=True,
             validators=[UniqueValidator(queryset=User.objects.all())]
         )
+    # first_name = serializers.CharField(validators=[validate_slug])
+    # last_name = serializers.CharField(validators=[validate_slug])
+
     password = serializers.CharField(write_only=True, required=True,
                                      validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
+
+
 
     class Meta:
         model = User
@@ -232,8 +238,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        username = self.username_creation(validated_data)
+        # count = 0
+        # if User.objects.get(username=username) :
+        #     count+=1
+        #     username = username + str(count)
+
+        print(username)
         user = User.objects.create(
-            username=validated_data['username'],
+            username = username,
             email=validated_data['email'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
@@ -243,9 +256,24 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return user
 
-        # issue.project_associated.set(Project.objects.filter(id=int(pk)))
-        # contributor = Contributor.objects.create(
-        #     role = 'author',
-        # )
-        # contributor.users_on_project.set(user)
-        # project.save()
+
+    def username_creation(self, validated_data):
+        clean_first_name = clean_string(validated_data['first_name']," ","-")
+        clean_last_name = clean_string(validated_data['last_name']," ","-")
+
+        if len(clean_first_name) < 4:
+            first_key = clean_first_name
+
+        else :
+            first_key = clean_first_name[:3]
+
+
+        if len(clean_last_name) < 2:
+            second_key = clean_last_name
+
+        else:
+            second_key = clean_last_name[:2]
+
+        username = first_key+second_key
+
+        return username
