@@ -20,6 +20,7 @@ from django.contrib.auth import get_user_model
 # from django.contrib.auth.models import User
 # from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
+from softdesk.permissions import IsOwnerOrReadOnly
 User = get_user_model()
 
 
@@ -49,10 +50,10 @@ class ProjectViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = ProjectListSerializer
     detail_serializer_class = ProjectDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
-        queryset = Project.objects.filter(author = self.request.user)
+        queryset = Project.objects.filter(contributors = self.request.user)
         return queryset
 
 
@@ -60,7 +61,7 @@ class IssueViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = IssueListSerializer
     detail_serializer_class = IssueDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
         path = self.request.path_info
@@ -75,7 +76,7 @@ class CommentViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = CommentListSerializer
     detail_serializer_class = CommentDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
         path = self.request.path_info
@@ -96,14 +97,14 @@ class CommentViewset(MultipleSerializerMixin, ModelViewSet):
 
 class ContributorViewset(MultipleSerializerMixin, ModelViewSet):
     serializer_class = ContributorListSerializer
-    detail_serializer_class = ContributorDetailSerializer
+    detail_serializer_class = UserDetailSerializer
     queryset = Contributor.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
         path = self.request.path_info
         split_path = path.split('/')
         project_id = split_path[2]
         project = Project.objects.get(id=project_id)
-        queryset = Contributor.objects.filter(project_contributed = project)
+        queryset = Contributor.objects.filter(project_associated = project)
         return queryset

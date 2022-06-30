@@ -31,6 +31,11 @@ ISSUE_STATUS = [
     ('done', 'Terminé')
 ]
 
+PROJECT_PERMISSIONS = [
+    ('modify', 'modifier'),
+    ('read-only', 'lecture seule')
+]
+
 def clean_string(string, *args):
     string = string.casefold()
     for i in args:
@@ -38,13 +43,15 @@ def clean_string(string, *args):
     return string
 
 
-
-
-
 class User(AbstractUser):
-    contributions = models.ForeignKey(
-        to='softdesk.Contributor', on_delete=models.CASCADE,
-        related_name='users_on_project', null=True)
+    # contributions = models.ForeignKey(
+    #     to='softdesk.Contributor', on_delete=models.CASCADE,
+    #     related_name='users_on_project', null=True)
+    # projects_contributed = models.ManyToManyField(
+    #     'self',
+    #     symmetrical=False,
+    #     through="softdesk.Contributor"
+    # )
     username = models.CharField(max_length=255, validators = [validate_slug], unique=True)
     first_name = models.CharField(max_length=255, validators = [validate_slug])
     last_name = models.CharField(max_length=255, validators = [validate_slug])
@@ -52,15 +59,17 @@ class User(AbstractUser):
     password = models.CharField(max_length=255, blank=False,
                                      validators=[validate_password])
 
+    def __str__(self):
+        return self.username
+
 def set_username(instance, **kwargs):
     if not instance.username:
         clean_first_name = clean_string(instance.first_name, " ", "-")
         clean_last_name = clean_string(instance.last_name, " ", "-")
         username = clean_first_name + "-" + clean_last_name
-        # username = instance.first_name
         counter = 1
         while User.objects.filter(username=username):
-            username = instance.first_name + str(counter)
+            username = username + str(counter)
             counter += 1
         instance.username = username
 
@@ -69,18 +78,22 @@ models.signals.pre_save.connect(set_username, sender=User)
 
 class Contributor(models.Model):
     role = models.CharField(max_length=255, validators = [validate_slug])
+    project_associated = models.ForeignKey(to='softdesk.Project', on_delete=models.CASCADE, related_name='contributors', null = True)
+    users_assigned = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='contributions', null=True)
+    permission = models.CharField(max_length=255, choices=PROJECT_PERMISSIONS, blank=False,
+                            default='read-only', validators = [validate_slug])
 
 
 class Project(models.Model):
     title = models.CharField(max_length=255, blank=False, default='undefined', validators = [validate_slug])
     type = models.CharField(max_length=255, choices=PROJECT_TYPE, blank=False,
                             default='undefined', validators = [validate_slug])
-    author = models.CharField(max_length=255, default= 'nope')
+    # author = models.CharField(max_length=255, default= 'nope')
     description = models.CharField(max_length=500, blank=True, validators = [validate_slug])
-
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='projects_created', null=True)
     users_on = models.ForeignKey(
         to='softdesk.Contributor', on_delete=models.CASCADE,
-        related_name='project_contributed', null=True)
+        related_name='projects_assigned', null=True)
 
     def __str__(self):
         return self.title
@@ -92,31 +105,29 @@ class Issue(models.Model):
                            default='undefined')
     priority = models.CharField(max_length=255, choices=ISSUE_PRIORITY,
                                 blank=False, default='undefined')
-    author = models.CharField(max_length=255, default= 'nope')
+    status = models.CharField(max_length=255, choices=ISSUE_STATUS, blank = False)
+    # author = models.CharField(max_length=255, default= 'nope')
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='issues_created', null=True)
     description = models.CharField(max_length=500, blank=True)
     created_time = models.DateTimeField(auto_now_add=True, null=True)
     updated_time = models.DateTimeField(auto_now=True)
     project_associated = models.ForeignKey(to=Project, on_delete=models.CASCADE, related_name='issues', null = True)
-    # assignee = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING, related_name='issues_assigned')
+    assignee = models.ForeignKey(to=User, on_delete=models.DO_NOTHING, related_name='issues_assigned', null=True)
 
     def __str__(self):
         return self.title
 
 
 class Comment(models.Model):
-    name = models.CharField(max_length=255)
     issue_associated = models.ForeignKey(to=Issue, on_delete=models.CASCADE, related_name='comments', null = True)
-    author = models.CharField(max_length=255, default= 'nope')
-
-    comment_id = models.IntegerField(auto_created=True, null=True)
+    # author = models.CharField(max_length=255, default= 'nope')
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='comments_created', null=True)
     description = models.CharField(max_length=500, blank=True)
-    # author = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING, related_name='comment_author', null = True)
-    # issue_id = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='comments')
     created_time = models.DateTimeField(auto_now_add=True, null=True)
-    active = models.BooleanField(default=False)
+    updated_time = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.comment_id
+        return self.description
 
 
 
