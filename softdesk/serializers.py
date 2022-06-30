@@ -24,7 +24,7 @@ class ContributorListSerializer(ModelSerializer):
 
     class Meta:
         model = Contributor
-        fields = ['users_assigned', 'role',  'permission']
+        fields = ['id','user_assigned', 'role',  'permission']
 
     def create(self, validated_data):
         user = None
@@ -32,13 +32,14 @@ class ContributorListSerializer(ModelSerializer):
         path = request.path_info
         split_path = path.split('/')
         project_id = split_path[2]
-        username = request.data['users_assigned']
+        username = request.data['user_assigned']
         project = Project.objects.get(id=project_id)
-        user = User.objects.get(username=username)
+        user = User.objects.get(id=username)
         contributor = Contributor.objects.create(
             role = validated_data['role'],
             project_associated = project,
-            users_assigned = user,
+            user_assigned = user,
+            author=user,
             permission = validated_data['permission']
         )
         # contributor.user_to_assign=user
@@ -46,12 +47,11 @@ class ContributorListSerializer(ModelSerializer):
         return contributor
 
 
-
 class ProjectListSerializer(ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'title', 'type', 'users_on', 'description']
+        fields = ['id', 'title', 'type', 'contributors', 'description']
 
         extra_kwargs = {
             'title': {'required': True},
@@ -70,6 +70,15 @@ class ProjectListSerializer(ModelSerializer):
             author=user,
             description=request.data['description'],
         )
+        contributor = Contributor.objects.create(
+            role = 'author',
+            project_associated=project,
+            user_assigned = user,
+            author=user,
+            permission = 'modify'
+        )
+        print(contributor)
+        contributor.save()
         return project
 
 
@@ -135,36 +144,19 @@ class CommentListSerializer(ModelSerializer):
         return comment
 
 
-
-    # def get_project_contributed(self, instance):
-    #     queryset = instance.project_contributed.all()
-    #     serializer = ProjectListSerializer(queryset, many=True)
-    #     return serializer.data
-
-    # def get_users_on_project(self, instance):
-    #     queryset = instance.users_on_project.all()
-    #     serializer = UserListSerializer(queryset, many=True)
-    #     return serializer.data
-
-
-
 class ProjectDetailSerializer(ModelSerializer):
 
     issues = IssueListSerializer(many=True)
-    users_on = ContributorListSerializer(many=True)
-    # users_on_project = ContributorListSerializer(many=True)
+    contributors = ContributorListSerializer(many=True)
 
     class Meta:
         model = Project
-        fields = ['id', 'title', 'type', 'users_on', 'description', 'issues']
-
-
+        fields = ['id', 'title', 'type', 'contributors', 'description', 'issues']
 
 
 class IssueDetailSerializer(ModelSerializer):
 
     comments = CommentListSerializer(many=True)
-    # assignee = UserListSerializer(many=True)
 
     class Meta:
         model = Issue
@@ -180,42 +172,23 @@ class CommentDetailSerializer(ModelSerializer):
 
 class UserDetailSerializer(ModelSerializer):
 
-    # project_contributed = SerializerMethodField()
-    projects_assigned = ProjectListSerializer(many=True)
-    projects_created = ProjectListSerializer(many=True)
+    contributions = ContributorListSerializer(many=True)
     issues_created = IssueListSerializer(many=True)
     comments_created = CommentListSerializer(many=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'projects_created', 'issues_created', 'comments_created', 'projects_assigned']
-    #
-    # def get_project_contributed(self, instance):
-    #     queryset = instance.project_contributed.all()
-    #     serializer = ProjectListSerializer(queryset, many=True)
-    #     return serializer.data
-
-
+        fields = ['id', 'username', 'contributions', 'issues_created', 'comments_created', 'projects_assigned']
 
 
 class ContributorDetailSerializer(ModelSerializer):
-
-    project_contributed = ProjectDetailSerializer(many=True)
-    users_assigned = UserListSerializer(many=True)
+    #
+    user_assigned = UserListSerializer()
 
     class Meta:
-        model = User
-        fields = ['id', 'role', 'users_assigned', 'project_associated']
+        model = Contributor
+        fields = ['id', 'user_assigned', 'role', 'permission']
 
-    # def update(self, instance, validated_data):
-    #     if
-    #
-    # #
-    # def get_project_contributed(self, instance):
-    #     queryset = instance.project_contributed.all()
-    #     serializer = ProjectListSerializer(queryset, many=True)
-    #     print(serializer)
-    #     return serializer.data
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):

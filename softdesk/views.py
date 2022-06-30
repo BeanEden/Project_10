@@ -8,21 +8,18 @@ from softdesk.models import Project, Issue, Comment, Contributor
 from softdesk.serializers import ProjectListSerializer, ProjectDetailSerializer,\
     IssueListSerializer, IssueDetailSerializer,\
     CommentListSerializer, CommentDetailSerializer, \
-    UserListSerializer, UserDetailSerializer,\
     ContributorListSerializer, ContributorDetailSerializer
 from .serializers import MyTokenObtainPairSerializer
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
-# from authentication.models import Users
+
 from .serializers import RegisterSerializer
 from rest_framework import generics
-from django.contrib.auth import get_user_model
-# from django.contrib.auth.models import User
-# from django.contrib.auth.models import User
+
 from django.contrib.auth import get_user_model
 from softdesk.permissions import IsOwnerOrReadOnly
-User = get_user_model()
 
+User = get_user_model()
 
 
 class MultipleSerializerMixin:
@@ -36,11 +33,13 @@ class MultipleSerializerMixin:
 
 
 class MyObtainTokenPairView(TokenObtainPairView):
+
     permission_classes = (AllowAny,)
     serializer_class = MyTokenObtainPairSerializer
 
 
 class RegisterView(generics.CreateAPIView):
+
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
@@ -53,7 +52,13 @@ class ProjectViewset(MultipleSerializerMixin, ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
     def get_queryset(self):
-        queryset = Project.objects.filter(contributors = self.request.user)
+        user = self.request.user
+        wanted_items = set()
+        for item in Contributor.objects.filter(user_assigned=user):
+            project_id = item.project_associated_id
+            print(project_id)
+            wanted_items.add(item.pk)
+        queryset = Project.objects.filter(pk__in=wanted_items)
         return queryset
 
 
@@ -87,17 +92,9 @@ class CommentViewset(MultipleSerializerMixin, ModelViewSet):
         return queryset
 
 
-# class UserViewset(MultipleSerializerMixin, ModelViewSet):
-#     serializer_class = UserListSerializer
-#     detail_serializer_class = UserDetailSerializer
-#     queryset = User.objects.all()
-#     permission_classes = [IsAuthenticated]
-
-
-
 class ContributorViewset(MultipleSerializerMixin, ModelViewSet):
     serializer_class = ContributorListSerializer
-    detail_serializer_class = UserDetailSerializer
+    detail_serializer_class = ContributorDetailSerializer
     queryset = Contributor.objects.all()
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
 
