@@ -1,4 +1,4 @@
-# Développez une application Web en utilisant Django
+# Create a secure RESTful API using Django REST
 *par Jean-Corentin Loirat*
 on 26/07/2022
 
