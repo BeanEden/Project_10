@@ -1,4 +1,5 @@
-from rest_framework.serializers import ModelSerializer, ValidationError, CharField
+from rest_framework.serializers import ModelSerializer, ValidationError, \
+    CharField
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from softdesk.models import Project, Issue, Comment, Contributor, set_username
@@ -21,7 +22,6 @@ class ContributorListSerializer(ModelSerializer):
     """ ContributorListSerializer
     Create is overwritten to match the need of the API"""
 
-
     class Meta:
         model = Contributor
         fields = ['id', 'user_assigned', 'role',  'permission']
@@ -43,7 +43,7 @@ class ContributorListSerializer(ModelSerializer):
         project_id = split_path[2]
         user_assigned = validated_data['user_assigned']
         project = Project.objects.get(id=project_id)
-        try :
+        try:
             user_assigned = User.objects.get(username=user_assigned)
         except:
             raise ValidationError(
@@ -101,7 +101,8 @@ class IssueListSerializer(ModelSerializer):
 
     class Meta:
         model = Issue
-        fields = ['id', 'title', 'tag', 'priority', 'status', 'author', 'description', 'assignee']
+        fields = ['id', 'title', 'tag', 'priority', 'status', 'author',
+                  'description', 'assignee']
 
         extra_kwargs = {
             'title': {'required': True},
@@ -142,7 +143,8 @@ class CommentListSerializer(ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'author', 'created_time', 'updated_time', 'description']
+        fields = ['id', 'author', 'created_time', 'updated_time',
+                  'description']
 
     def create(self, validated_data):
         user = None
@@ -199,10 +201,10 @@ class CommentDetailSerializer(ModelSerializer):
                   'description']
 
 
-
-
-
 class ContributorDetailSerializer(ModelSerializer):
+    """ CommentDetailSerializer
+        Update and delete are managed through ModelSerializer inheritance
+        UserListSerializer is linked to display"""
 
     user_assigned = UserListSerializer()
 
@@ -211,6 +213,7 @@ class ContributorDetailSerializer(ModelSerializer):
         fields = ['id', 'user_assigned', 'role', 'permission']
 
 
+# Unused Serializer
 class UserDetailSerializer(ModelSerializer):
 
     contributions = ContributorListSerializer(many=True)
@@ -222,8 +225,9 @@ class UserDetailSerializer(ModelSerializer):
         fields = ['id', 'username', 'contributions', 'issues_created',
                   'comments_created', 'projects_assigned']
 
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """ Manages tokens (refresh and access)"""
     @classmethod
     def get_token(cls, user):
         token = super(MyTokenObtainPairSerializer, cls).get_token(user)
@@ -232,6 +236,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class RegisterSerializer(ModelSerializer):
+    """ Manages User creation and validates password checks"""
     password2 = CharField(write_only=True, required=True)
 
     class Meta:
@@ -244,12 +249,14 @@ class RegisterSerializer(ModelSerializer):
         }
 
     def validate(self, attrs):
+        """validates passwords match during sign up"""
         if attrs['password'] != attrs['password2']:
             raise ValidationError(
                 {"password": "Password fields didn't match."})
         return attrs
 
     def create(self, validated_data):
+        """creates a new user"""
         user = User.objects.create(
             email=validated_data['email'],
             first_name=validated_data['first_name'],

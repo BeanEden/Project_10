@@ -69,7 +69,7 @@ class User(AbstractUser):
         return self.username
 
 
-def set_username(instance):
+def set_username(instance, **kwargs):
     """ Function used to create a username
     Not a method of User
     Args : user instance
