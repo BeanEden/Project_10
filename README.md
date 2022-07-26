@@ -1,5 +1,5 @@
 # Create a secure RESTful API using Django REST
-*par Jean-Corentin Loirat*
+*Jean-Corentin Loirat*
 on 26/07/2022
 
 Git hub link : https://github.com/BeanEden/Project_10.git
