@@ -1,111 +1,119 @@
 # Développez une application Web en utilisant Django
 *par Jean-Corentin Loirat*
-le 26/07/2022
+on 26/07/2022
 
-Lien du repository git hub : https://github.com/BeanEden/Project_10.git
+Git hub link : https://github.com/BeanEden/Project_10.git
 
-## Description de l'application :
-Application web "LITReview" permettant à une communauté d'utilisateurs de consulter ou de solliciter une critique de livres à la demande.
+## Description :
+"Softdest" is an API for an issue tracking system.
+
+
+JSON documentation link : https://www.getpostman.com/collections/3933f9bf0f101d26f037
 
 ## Technologies :
 * Django
 * Python
 
 
-## Utilisation :
+## Set up :
 
-### 1 - Télécharger le dossier.zip :
-Installez les élements dans le dossier de votre choix
+### 1 - Download the zip file :
+Install the elements in the repository of your choice
 
-### 2 - Créez un environement virtuel dans votre dossier et activez le :
-* Commande terminal : `cd path/to/selected/project/directory`
-* Commande terminal : `python -m venv env`
-* Commande terminal : `env/Scripts/activate.bat` (sous Windows)
+### 2 - Create a virtual environment in your repo and activate it :
+* Terminal command : `cd path/to/selected/project/directory`
+* Terminal command : `python -m venv env`
+* Terminal command : `env/Scripts/activate.bat` (Windows)
 
-### 3 - Importez les packages :
-Importez dans votre environnement virtuel les packages nécessaires à l'application.
-* Commande terminal : `pip install -r requirements.txt`
+### 3 - Import packages :
+Import in your virtual environment the necessary packages
+* Terminal command : `pip install -r requirements.txt`
 
-### 4 - Vérifiez les migrations : 
-Vérifiez que les migrations sont sont bien à jour
-* Commande terminal : `python manage.py makemigrations`
-* Commande terminal : `python manage.py migrate`
+### 4 - Check for migrations :
+Check if the migrations are up to date
+* Terminal command : `python manage.py makemigrations`
+* Terminal command : `python manage.py migrate`
 
-### 5 - Lancez l'application : 
-Lancez le serveur afin d'accéder au site.
-* Commande terminal : `python manage.py runserver`
-
-
-## Déroulement
-Après avoir lancé le programme, l'utilisateur peut aller sur la page 
-http://127.0.0.1:8000/
-
-### Connexion : 
-Si l'utilisateur n'est pas encore connecté, il peut :
-* S'inscrire
-* Se connecter
-
-Si l'utilisateur est déjà connecté, il arrivera sur la page 
-http://127.0.0.1:8000/home/ \
-L'ensemble des pages du site requiert d'être connecté.
-
-### Navigation : 
-
-Fonctionnalités principales :
-* Créer, gérer/ supprimer des tickets et des critiques
-* S'abonner/ se désabonner à d'autres utilisateurs
-* Consulter des feeds (tickets, critiques, utilisateurs)
+### 5 - Start the server :
+Start the server in order to use the API
+* Terminal command : `python manage.py runserver`
 
 
-## Principaux liens :
-* Accueil : http://127.0.0.1:8000/home/
-* Créer un ticket : http://127.0.0.1:8000/ticket/create/
-* Créer une critique (sans ticket) : http://127.0.0.1:8000/review/create_with_ticket/
-* Votre feed : http://127.0.0.1:8000/user_feed/
-* Tickets en attente : http://127.0.0.1:8000/ticket_unchecked_feed/
-* Utilisateurs suivis : http://127.0.0.1:8000/follow_users_page/
+## Using the API
+After starting the server, the user can start sending its requests to the API
 
-## Fonctionnement de l'application : 
-Les modèles sont gérés dans review/models.py
-Il existe 4 modèles : 
+### Connection :
+* Create an user account
+http://127.0.0.1:8000/signup/
+
+* Start a user session
+http://127.0.0.1:8000/login/
+
+All other endpoints require to be authenticated
+
+### Main endpoints : 
+* Access your projects : 
+http://127.0.0.1:8000/projects/
+    * _(GET, POST)_
+
+* Access a specific project : 
+http://127.0.0.1:8000/projects/<int:project_id>/
+    * _(GET, PUT, DELETE)_
+
+* Access users of a specific project : http://127.0.0.1:8000/projects/<int:project_id>/users/
+    * _(GET, POST)_
+
+* Access a specific user assignment : 
+http://127.0.0.1:8000/projects/<int:project_id>/issues/<int:issue_id>/
+    * _(GET, PUT, DELETE)_
+
+* Access issues of a specific project : http://127.0.0.1:8000/projects/<int:project_id>/issues/
+    * _(GET, POST)_
+
+* Access a specific issue : 
+http://127.0.0.1:8000/projects/<int:project_id>/issues/<int:issue_id>/
+    * _(GET, PUT, DELETE)_
+
+* Access comments of a specific issue : 
+http://127.0.0.1:8000/projects/<int:project_id>/issues/<int:issue_id>/comments/
+    * _(GET, POST)_
+  
+* Access a specific comment : 
+http://127.0.0.1:8000/projects/<int:project_id>/issues/<int:issue_id>/comments/<int:comment_id>/
+    * _(GET, PUT, DELETE)_
+  
+
+### Access : 
+
+Only the author of projects / issues / comments / user_assignments can update or delete their items.
+
+The only exception is the author of the project.
+He can also give permissions to modify while assigning people to a project.
+
+
+### Security :
+
+The API is secured against :
+- authentication (access and refresh token, limited time session, only usewhile authenticated)
+- injection (fields are slugs / alphanumeric / predetermined choices)
+
+## API architecture : 
+Models are managed in softdesk/models.py
+5 models exists : 
 * User
-* Ticket (lié à un user)
-* Review (lié à un ticket et un user)
-* UserFollows (lié deux users)
+* Contributor (user_assignment project/user)
+* Project
+* Issues
+* Comments
 
-Ces objets (instances de modèles) sont traités au travers des formulaires suivants :
-* LoginForm / SignupForm (pour l'User)
-* ReviewForm
-* TicketForm
-* DeleteForm (pour ticket, critique et UserFollows)
+These Models are managed through the serializers in serializers.py
 
-Les vues sont gérées dans review/views.py
-Il existe une view par page.
-* Les feeds sont traités en ClassBasedView(CBV) (ListView)
-* Les autres pages sont traitées en FunctionBasedView(FBV)
-
-L'authentification des classes est gérée en héritant LoginRequiredMixin.\
-Les fonctions possèdent le décorateur @login_required.
-
-Il existe un template par type de page.\
-Des snippets pour les tickets et critiques sont également présents pour l'affichage dans les feeds.
-
+ViewSets are managed in views.py
+ViewSets for login and authentication
 
 ## Database :
-La base de donnée est le fichier `db.sqlite3`.\
-Les images sont stockées dans le dossier `media`.
+Database is in the file `db.sqlite3`.\
 
-
-## En savoir plus :
+## Learn more :
 Les fonctions et méthodes sont documentées via docstrings avec leurs utilisations, arguments et retours.
-
-
-## Générer un report flake8:
-Installez flake8 html
-
-* Commande terminal : `pip install flake8-html`
-
-Lancez le report flake8 avec une longueur de ligne de 119 caractères.
-* Commande terminal :`flake8 --max-line-length=119 --format=html --htmldir=flake-report`
-
-Un nouveau dossier flake-report est créé, contenant index.html.
+Classes and functions are documented with docstrings about their use, arguments and responses.
