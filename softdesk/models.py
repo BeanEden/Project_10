@@ -1,17 +1,21 @@
-from django.contrib.auth.models import AbstractUser
-from django.conf import settings
-from django.db import models, transaction
-from requests import request
-from django.core.validators import ValidationError, validate_slug, slug_re
 from django.contrib.auth.password_validation import validate_password
-from rest_framework.validators import UniqueValidator
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import validate_slug, RegexValidator
+from django.db import models
 
-# PROJECT_TYPE = ['back-end', 'front-end', 'iOS', 'Android']
+# MODELS used in this API
+# This file manages the fields and their validation
+# CRUD operations are done in serializers.py
 
-PROJECT_TYPE = [('back-end','back-end'),
-                ('front-end','front-end'),
+
+TEXT_REGEX = RegexValidator(regex='[a-zA-Z0-9\s]',
+                            message='characters must be Alphanumeric')
+
+
+PROJECT_TYPE = [('back-end', 'back-end'),
+                ('front-end', 'front-end'),
                 ('iOS', 'iOS'),
-                ('Android','Android')]
+                ('Android', 'Android')]
 
 ISSUE_PRIORITY = [
     ('low', 'FAIBLE'),
@@ -36,7 +40,13 @@ PROJECT_PERMISSIONS = [
     ('read-only', 'lecture seule')
 ]
 
+
 def clean_string(string, *args):
+    """Clean strings (delete characters) in order to get a proper username
+    Args :
+    - string to modify
+    - args (characters to delete)
+    Return : string without selected characters"""
     string = string.casefold()
     for i in args:
         string = string.replace(i, "")
@@ -44,18 +54,27 @@ def clean_string(string, *args):
 
 
 class User(AbstractUser):
-    username = models.CharField(max_length=255, validators = [validate_slug], unique=True)
-    first_name = models.CharField(max_length=255, validators = [validate_slug])
-    last_name = models.CharField(max_length=255, validators = [validate_slug])
-    email = models.EmailField(blank=False,unique=True)
-    password = models.CharField(max_length=255, blank=False, validators=[validate_password])
+    """General User """
+    username = models.CharField(max_length=255, validators=[validate_slug],
+                                unique=True)
+    first_name = models.CharField(max_length=255, validators=[validate_slug])
+    last_name = models.CharField(max_length=255, validators=[validate_slug])
+    email = models.EmailField(blank=False, unique=True)
+    password = models.CharField(max_length=255, blank=False,
+                                validators=[validate_password])
     projects = models.ManyToManyField('self', symmetrical=False,
-                                         through="softdesk.Contributor")
+                                      through="softdesk.Contributor")
+
     def __str__(self):
         return self.username
 
 
-def set_username(instance, **kwargs):
+def set_username(instance):
+    """ Function used to create a username
+    Not a method of User
+    Args : user instance
+    Return: Add an username to the User, first_name-last_name(
+    +number if already existing)"""
     if not instance.username:
         clean_first_name = clean_string(instance.first_name, " ", "-")
         clean_last_name = clean_string(instance.last_name, " ", "-")
@@ -71,46 +90,85 @@ models.signals.pre_save.connect(set_username, sender=User)
 
 
 class Contributor(models.Model):
-    role = models.CharField(max_length=255, validators = [validate_slug])
-    project_associated = models.ForeignKey(to='softdesk.Project', on_delete=models.CASCADE, related_name='contributors', null = True)
-    user_assigned = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='contributions', null=True)
-    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='relations_created', null=True)
-    permission = models.CharField(max_length=255, choices=PROJECT_PERMISSIONS, blank=False,
-                            default='read-only', validators = [validate_slug])
+    """Contributor object represents an user assignement between a User
+    and a Project through a Many to Many field
+    Selected choices for permission"""
+    role = models.CharField(max_length=255, validators=[validate_slug],
+                            blank=False)
+    project_associated = models.ForeignKey(to='softdesk.Project',
+                                           on_delete=models.CASCADE,
+                                           related_name='contributors',
+                                           null=True)
+    user_assigned = models.ForeignKey(to=User, on_delete=models.CASCADE,
+                                      related_name='contributions', null=True,
+                                      blank=False)
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE,
+                               related_name='relations_created', null=True)
+    permission = models.CharField(max_length=255, choices=PROJECT_PERMISSIONS,
+                                  blank=False, default='read-only',
+                                  validators=[validate_slug])
+
+    def __str__(self):
+        return self.user_assigned
 
 
 class Project(models.Model):
-    title = models.CharField(max_length=255, blank=False, default='undefined', validators = [validate_slug])
+    """Project linked to User through Contributor, and its author
+    Selected choices for type"""
+    title = models.CharField(max_length=255, blank=False, default='undefined',
+                             validators=[TEXT_REGEX])
     type = models.CharField(max_length=255, choices=PROJECT_TYPE, blank=False,
-                            default='undefined', validators = [validate_slug])
-    description = models.CharField(max_length=500, blank=True, validators = [validate_slug])
-    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='projects_created', null=True)
-    contributor = models.ManyToManyField('self', symmetrical=False, through="softdesk.Contributor")
+                            default='undefined', validators=[validate_slug])
+    description = models.CharField(max_length=500, blank=True,
+                                   validators=[TEXT_REGEX])
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE,
+                               related_name='projects_created', null=True)
+    contributor = models.ManyToManyField('self', symmetrical=False,
+                                         through="softdesk.Contributor")
 
     def __str__(self):
         return self.title
 
 
 class Issue(models.Model):
-    title = models.CharField(max_length=255, blank=False, default='undefined')
-    tag = models.CharField(max_length=255, choices=ISSUE_TAG, blank=False, default='undefined')
-    priority = models.CharField(max_length=255, choices=ISSUE_PRIORITY, blank=False, default='undefined')
-    status = models.CharField(max_length=255, choices=ISSUE_STATUS, blank = False)
-    description = models.CharField(max_length=500, blank=True)
+    """Issue linked to :
+    - User through its author and assignees,
+    - its Project associated (only one)
+    Selected choices for tag, priority, stats"""
+    title = models.CharField(max_length=255, blank=False, default='undefined',
+                             validators=[TEXT_REGEX])
+    tag = models.CharField(max_length=255, choices=ISSUE_TAG, blank=False,
+                           default='undefined')
+    priority = models.CharField(max_length=255, choices=ISSUE_PRIORITY,
+                                blank=False, default='undefined')
+    status = models.CharField(max_length=255, choices=ISSUE_STATUS,
+                              blank=False)
+    description = models.CharField(max_length=500, blank=True,
+                                   validators=[TEXT_REGEX])
     created_time = models.DateTimeField(auto_now_add=True, null=True)
     updated_time = models.DateTimeField(auto_now=True)
-    project_associated = models.ForeignKey(to=Project, on_delete=models.CASCADE, related_name='issues', null = True)
-    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='issues_created', null=True)
-    assignee = models.ForeignKey(to=User, on_delete=models.DO_NOTHING, related_name='issues_assigned', null=True)
+    project_associated = models.ForeignKey(to=Project,
+                                           on_delete=models.CASCADE,
+                                           related_name='issues', null=True)
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE,
+                               related_name='issues_created', null=True)
+    assignee = models.ForeignKey(to=User, on_delete=models.DO_NOTHING,
+                                 related_name='issues_assigned', null=True)
 
     def __str__(self):
         return self.title
 
 
 class Comment(models.Model):
-    issue_associated = models.ForeignKey(to=Issue, on_delete=models.CASCADE, related_name='comments', null = True)
-    author = models.ForeignKey(to=User, on_delete=models.CASCADE, related_name='comments_created', null=True)
-    description = models.CharField(max_length=500, blank=True)
+    """Comment linked to :
+        - User through its author,
+        - its Issue associated (only one)"""
+    issue_associated = models.ForeignKey(to=Issue, on_delete=models.CASCADE,
+                                         related_name='comments', null=True)
+    author = models.ForeignKey(to=User, on_delete=models.CASCADE,
+                               related_name='comments_created', null=True)
+    description = models.CharField(max_length=500, blank=False,
+                                   validators=[TEXT_REGEX])
     created_time = models.DateTimeField(auto_now_add=True, null=True)
     updated_time = models.DateTimeField(auto_now=True)
 

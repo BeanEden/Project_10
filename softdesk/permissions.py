@@ -2,7 +2,7 @@ from rest_framework import permissions
 from softdesk.models import Contributor, Project
 
 
-class IsOwnerOrReadOnly(permissions.BasePermission):
+class IsAllowedOrReadOnly(permissions.BasePermission):
     """
     Object-level permission to only allow owners of an object to edit it.
     Assumes the model instance has an `owner` attribute.

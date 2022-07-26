@@ -1,53 +1,67 @@
-from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
-
+from rest_framework.serializers import ModelSerializer, ValidationError, CharField
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import get_user_model
 from softdesk.models import Project, Issue, Comment, Contributor, set_username
 
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework import serializers
-# from django.contrib.auth.models import User
-from rest_framework.validators import UniqueValidator
-from django.contrib.auth.password_validation import validate_password
-from django.core.validators import validate_slug
+# SERIALIZERS used in this API
+# This file manages CRUD operations to have the simplest views possible
+# Order of serializers : Lists, Details, Authentication
 
-from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
 class UserListSerializer(ModelSerializer):
-
+    """ """
     class Meta:
         model = User
         fields = ['id', 'username']
 
 
 class ContributorListSerializer(ModelSerializer):
+    """ ContributorListSerializer
+    Create is overwritten to match the need of the API"""
+
 
     class Meta:
         model = Contributor
-        fields = ['id','user_assigned', 'role',  'permission']
+        fields = ['id', 'user_assigned', 'role',  'permission']
+
+    extra_kwargs = {
+        'user_assigned': {'required': True},
+        'role': {'required': True},
+        'permission': {'required': True}
+    }
 
     def create(self, validated_data):
+        """create a Contributor instance"""
         user = None
         request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            user = request.user
         path = request.path_info
         split_path = path.split('/')
         project_id = split_path[2]
-        username = request.data['user_assigned']
+        user_assigned = validated_data['user_assigned']
         project = Project.objects.get(id=project_id)
-        user = User.objects.get(id=username)
+        try :
+            user_assigned = User.objects.get(username=user_assigned)
+        except:
+            raise ValidationError(
+                {"user_assigned": "no user with this id"})
         contributor = Contributor.objects.create(
-            role = validated_data['role'],
-            project_associated = project,
-            user_assigned = user,
+            role=validated_data['role'],
+            project_associated=project,
+            user_assigned=user_assigned,
             author=user,
-            permission = validated_data['permission']
+            permission=validated_data['permission']
         )
-        # contributor.user_to_assign=user
         contributor.save()
         return contributor
 
 
 class ProjectListSerializer(ModelSerializer):
+    """ ContributorListSerializer
+    Create is overwritten to match the need of the API"""
 
     class Meta:
         model = Project
@@ -65,24 +79,25 @@ class ProjectListSerializer(ModelSerializer):
         if request and hasattr(request, "user"):
             user = request.user
         project = Project.objects.create(
-            title= request.data['title'],
+            title=request.data['title'],
             type=request.data['type'],
             author=user,
             description=request.data['description'],
         )
         contributor = Contributor.objects.create(
-            role = 'author',
+            role='author',
             project_associated=project,
-            user_assigned = user,
+            user_assigned=user,
             author=user,
-            permission = 'modify'
+            permission='modify'
         )
-        print(contributor)
         contributor.save()
         return project
 
 
 class IssueListSerializer(ModelSerializer):
+    """ ContributorListSerializer
+    Create is overwritten to match the need of the API"""
 
     class Meta:
         model = Issue
@@ -93,9 +108,9 @@ class IssueListSerializer(ModelSerializer):
             'tag': {'required': True},
             'priority': {'required': True},
             'status': {'required': True},
-            'description': {'write_only': True}
+            'description': {'write_only': True},
+            'assignee': {'required': True}
         }
-
 
     def create(self, validated_data):
         user = None
@@ -107,7 +122,7 @@ class IssueListSerializer(ModelSerializer):
         project_id = split_path[2]
         project = Project.objects.get(id=project_id)
         assignee_username = validated_data['assignee']
-        assignee = User.objects.get(username = assignee_username)
+        assignee = User.objects.get(username=assignee_username)
         issue = Issue.objects.create(
             title=validated_data['title'],
             author=user,
@@ -115,13 +130,15 @@ class IssueListSerializer(ModelSerializer):
             priority=validated_data['priority'],
             status=validated_data['status'],
             description=validated_data['description'],
-            project_associated= project,
-            assignee = assignee,
+            project_associated=project,
+            assignee=assignee,
         )
         return issue
 
 
 class CommentListSerializer(ModelSerializer):
+    """ ContributorListSerializer
+    Create is overwritten to match the need of the API"""
 
     class Meta:
         model = Comment
@@ -139,35 +156,59 @@ class CommentListSerializer(ModelSerializer):
         comment = Comment.objects.create(
             description=validated_data['description'],
             author=user,
-            issue_associated = issue
+            issue_associated=issue
         )
         return comment
 
 
 class ProjectDetailSerializer(ModelSerializer):
+    """ ProjectDetailSerializer
+        Update and delete are managed through ModelSerializer inheritance
+        IssueListSerializer and ContributorListSerializer are linked
+        to display"""
 
     issues = IssueListSerializer(many=True)
     contributors = ContributorListSerializer(many=True)
 
     class Meta:
         model = Project
-        fields = ['id', 'title', 'type', 'contributors', 'description', 'issues']
+        fields = ['id', 'title', 'type', 'contributors', 'description',
+                  'issues']
 
 
 class IssueDetailSerializer(ModelSerializer):
+    """ IssueDetailSerializer
+        Update and delete are managed through ModelSerializer inheritance
+        CommentListSerializer is linked to display"""
 
     comments = CommentListSerializer(many=True)
 
     class Meta:
         model = Issue
-        fields = ['id', 'title', 'tag', 'priority', 'status', 'author','assignee', 'description', 'comments']
+        fields = ['id', 'title', 'tag', 'priority', 'status', 'author',
+                  'assignee', 'description', 'comments']
 
 
 class CommentDetailSerializer(ModelSerializer):
+    """ CommentDetailSerializer
+        Update and delete are managed through ModelSerializer inheritance"""
 
     class Meta:
         model = Comment
-        fields = ['id', 'author', 'created_time', 'updated_time', 'description']
+        fields = ['id', 'author', 'created_time', 'updated_time',
+                  'description']
+
+
+
+
+
+class ContributorDetailSerializer(ModelSerializer):
+
+    user_assigned = UserListSerializer()
+
+    class Meta:
+        model = Contributor
+        fields = ['id', 'user_assigned', 'role', 'permission']
 
 
 class UserDetailSerializer(ModelSerializer):
@@ -178,32 +219,20 @@ class UserDetailSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'contributions', 'issues_created', 'comments_created', 'projects_assigned']
-
-
-class ContributorDetailSerializer(ModelSerializer):
-    #
-    user_assigned = UserListSerializer()
-
-    class Meta:
-        model = Contributor
-        fields = ['id', 'user_assigned', 'role', 'permission']
-
-
+        fields = ['id', 'username', 'contributions', 'issues_created',
+                  'comments_created', 'projects_assigned']
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
     def get_token(cls, user):
-        print(user)
         token = super(MyTokenObtainPairSerializer, cls).get_token(user)
-        # Add custom claims
         token['username'] = user.username
         return token
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password2 = serializers.CharField(write_only=True, required=True)
+class RegisterSerializer(ModelSerializer):
+    password2 = CharField(write_only=True, required=True)
 
     class Meta:
         model = User
@@ -216,7 +245,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError(
+            raise ValidationError(
                 {"password": "Password fields didn't match."})
         return attrs
 

@@ -1,23 +1,19 @@
-from rest_framework.views import APIView
-from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet, GenericViewSet
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework import status
+from django.contrib.auth import get_user_model
+from rest_framework import generics
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .serializers import MyTokenObtainPairSerializer, RegisterSerializer
+
 from softdesk.models import Project, Issue, Comment, Contributor
 from softdesk.serializers import ProjectListSerializer, ProjectDetailSerializer,\
     IssueListSerializer, IssueDetailSerializer,\
     CommentListSerializer, CommentDetailSerializer, \
     ContributorListSerializer, ContributorDetailSerializer
-from .serializers import MyTokenObtainPairSerializer
-from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import RegisterSerializer
-from rest_framework import generics
-
-from django.contrib.auth import get_user_model
-from softdesk.permissions import IsOwnerOrReadOnly
+from softdesk.permissions import IsAllowedOrReadOnly
 
 User = get_user_model()
 
@@ -49,14 +45,13 @@ class ProjectViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = ProjectListSerializer
     detail_serializer_class = ProjectDetailSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAllowedOrReadOnly]
 
     def get_queryset(self):
         user = self.request.user
         wanted_items = set()
         for item in Contributor.objects.filter(user_assigned=user):
             project_id = item.project_associated_id
-            print(project_id)
             wanted_items.add(item.pk)
         queryset = Project.objects.filter(pk__in=wanted_items)
         return queryset
@@ -66,7 +61,7 @@ class IssueViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = IssueListSerializer
     detail_serializer_class = IssueDetailSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAllowedOrReadOnly]
 
     def get_queryset(self):
         path = self.request.path_info
@@ -81,7 +76,7 @@ class CommentViewset(MultipleSerializerMixin, ModelViewSet):
 
     serializer_class = CommentListSerializer
     detail_serializer_class = CommentDetailSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAllowedOrReadOnly]
 
     def get_queryset(self):
         path = self.request.path_info
@@ -96,7 +91,7 @@ class ContributorViewset(MultipleSerializerMixin, ModelViewSet):
     serializer_class = ContributorListSerializer
     detail_serializer_class = ContributorDetailSerializer
     queryset = Contributor.objects.all()
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsAllowedOrReadOnly]
 
     def get_queryset(self):
         path = self.request.path_info
