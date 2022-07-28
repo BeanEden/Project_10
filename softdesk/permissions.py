@@ -18,20 +18,20 @@ class IsAllowedOrReadOnly(permissions.BasePermission):
         if obj.author == request.user:
             return True
 
-        else:
-            path = request.path_info
-            split_path = path.split('/')
-            project_id = split_path[2]
-            project = Project.objects.get(id=project_id)
-            user = request.user
-            try:
-                contributor = Contributor.objects.get(
-                    user_assigned=user,
-                    project_associated=project)
-                return contributor.permission == 'modify'
-            except Contributor.DoesNotExist:
-                return False
-            except Contributor.MultipleObjectsReturned:
-                return False
         # else:
-        #     return False
+        #     path = request.path_info
+        #     split_path = path.split('/')
+        #     project_id = split_path[2]
+        #     project = Project.objects.get(id=project_id)
+        #     user = request.user
+        #     try:
+        #         contributor = Contributor.objects.get(
+        #             user_assigned=user,
+        #             project_associated=project)
+        #         return contributor.permission == 'modify'
+        #     except Contributor.DoesNotExist:
+        #         return False
+        #     except Contributor.MultipleObjectsReturned:
+        #         return False
+        else:
+            return False
