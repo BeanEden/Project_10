@@ -57,6 +57,7 @@ class ProjectViewSet(MultipleSerializerMixin, ModelViewSet):
         wanted_items = set()
         for item in Contributor.objects.filter(user_assigned=user):
             wanted_items.add(item.project_associated_id)
+        print(wanted_items)
         queryset = Project.objects.filter(pk__in=wanted_items)
         return queryset
 

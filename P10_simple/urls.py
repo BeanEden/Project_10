@@ -36,8 +36,8 @@ router_comments.register('users', ContributorViewSet, basename='user')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/token/refresh/', TokenRefreshView.as_view(),
-         name='token_refresh'),
+    # path('api/token/refresh/', TokenRefreshView.as_view(),
+    #      name='token_refresh'),
     path('', include(router_projects.urls)),
     path('projects/<int:project_id>/', include(router_issues.urls)),
     path('projects/<int:project_id>/issues/<int:issue_id>/',
