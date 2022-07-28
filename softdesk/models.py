@@ -66,7 +66,7 @@ class User(AbstractUser):
                                       through="softdesk.Contributor")
 
     def __str__(self):
-        return self.username
+        return str(self.username)
 
 
 def set_username(instance, **kwargs):
@@ -108,15 +108,14 @@ class Contributor(models.Model):
                                   blank=False, default='read-only',
                                   validators=[validate_slug])
 
-    def __str__(self):
-        return self.user_assigned
+
 
 
 class Project(models.Model):
     """Project linked to User through Contributor, and its author
     Selected choices for type"""
     title = models.CharField(max_length=255, blank=False, default='undefined',
-                             validators=[TEXT_REGEX])
+                             validators=[TEXT_REGEX], unique=True)
     type = models.CharField(max_length=255, choices=PROJECT_TYPE, blank=False,
                             default='undefined', validators=[validate_slug])
     description = models.CharField(max_length=500, blank=True,

@@ -33,3 +33,5 @@ class IsAllowedOrReadOnly(permissions.BasePermission):
                 return False
             except Contributor.MultipleObjectsReturned:
                 return False
+        # else:
+        #     return False
